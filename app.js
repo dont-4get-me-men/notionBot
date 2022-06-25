@@ -1,7 +1,5 @@
 import { Client } from "@notionhq/client";
-import { Telegraf } from "telegraf";
-
-import * as constants from "./additional.js";
+import { Markup, Telegraf } from "telegraf";
 
 import dotenv from "dotenv";
 
@@ -12,19 +10,22 @@ const notion = new Client({ auth: process.env.SECRET_NOTION });
 const database_video = process.env.DATABASE_VIDEO;
 const database_gtd = process.env.DATABASE_GTD;
 
+function getRandomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+
 const propertyGetters = {
   url: (obj) => obj?.url,
   select: (obj) => obj?.select?.name,
   title: (obj) => obj?.title?.[0]?.plain_text,
-  people: (obj) => obj?.people?.map((v) => v.name).join(", ") || null,
+  people: (obj) => obj?.people?.map((v) => v.name).join(", ") || "",
   date: (obj) => obj?.date?.start,
   email: (obj) => obj?.email,
   phone_number: (obj) => obj?.phone_number,
   checkbox: (obj) => obj?.checkbox,
   number: (obj) => obj?.number,
-  multi_select: (obj) =>
-    obj.multi_select?.map((v) => v.name).join(", ") || null,
-  files: (obj) => null,
+  multi_select: (obj) => obj.multi_select?.map((v) => v.name).join(", ") || "",
+  files: (obj) => "",
 };
 
 // get value of propery called "propName"
@@ -65,7 +66,9 @@ function getByTypesFromPage(page, types = ["url", "date"]) {
       typ: getType(page, p),
     }))
     .filter((p) => types.includes(p.typ))
-    .filter((p) => p.propVal !== null && p.propVal !== undefined)
+    .filter(
+      (p) => p.propVal !== null && p.propVal !== undefined && p.propVal !== ""
+    )
     .forEach((p) => (resp += `  ${p.prop} - ${p.propVal}\n`));
 
   return resp;
@@ -146,7 +149,7 @@ async function addTask(text, name = "Inbox", id_database = database_gtd) {
 async function addTaskUrl(
   text,
   urls,
-  name = "Inbox",
+  name_status = "Inbox",
   id_database = database_gtd
 ) {
   try {
@@ -154,7 +157,7 @@ async function addTaskUrl(
       parent: { database_id: id_database },
       properties: {
         Name: { title: [{ text: { content: text } }] },
-        Status: { select: { name: name } },
+        Bucket: { select: { name: name_status } },
         URL: { url: urls },
       },
     });
@@ -169,6 +172,21 @@ async function addTaskUrl(
 let databaseJson = await notion.databases.query({ database_id: database_gtd });
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+const commands = `
+start - Restart bot
+all - Get all Database
+transport - All task from database where Place = Transport 
+buy - List of purchase that i need to buy
+fun - random movie to watch
+`;
+// bot.setMyCommands([
+//   { command: "/start", description: "Restart bot" },
+//   { command: "/all", description: "Get all Database" },
+//   { command: "/buy", description: "List of purchase that i need to buy" },
+//   { command: "/todo", description: "What I need to do" },
+//   { command: "/fun", description: "What I need to do" },
+// ]);
 
 bot.start((ctx) => ctx.reply("Hello Yura"));
 bot.help((ctx) => ctx.reply(constants._commands));
@@ -202,6 +220,80 @@ bot.command("transport", async (ctx) => {
   );
 });
 
+bot.command("fun", async (ctx) => {
+  ctx.reply(
+    "Choose what are you going to watch",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Movies", "mov")],
+      [Markup.button.callback("Cartoons TV show", "car")],
+      [Markup.button.callback("Morning", "mor")],
+      [Markup.button.callback("TV-shows", "tv")],
+    ])
+  );
+});
+bot.on("callback_query", async (msg) => {
+  let data = msg.update.callback_query.data;
+  if (data == "mov") {
+    let films = await notion.databases.query({
+      database_id: process.env.DATABASE_FILMS,
+    });
+    let cartoons = await notion.databases.query({
+      database_id: process.env.DATABASE_CARTOONS,
+    });
+    let a = Object.values(films.results.concat(cartoons.results))
+      .map((p) => ({
+        check: getPropVal(p, "Watched"),
+        title: getPropVal(p, "Name"),
+      }))
+      .filter((p) => p.check == false);
+    msg.reply(a[getRandomInt(a.length)].title);
+  } else if (data == "car") {
+    let anime = await notion.databases.query({
+      database_id: process.env.DATABASE_ANIME,
+    });
+    let cartoons_tv = await notion.databases.query({
+      database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
+    });
+    let a = Object.values(anime.results)
+      .map((p) => ({
+        check: getPropVal(p, "Watched"),
+        title: getPropVal(p, "Name"),
+      }))
+      .filter((p) => p.check == false);
+    let b = Object.values(cartoons_tv.results)
+      .map((p) => ({
+        check: getPropVal(p, "Watched"),
+        title: getPropVal(p, "Name"),
+        tags: getPropVal(p, "Tags"),
+      }))
+      .filter((p) => p.check == false && !p.tags.includes("Morning"));
+    let c = a.concat(b);
+    msg.reply(c[getRandomInt(c.length)].title);
+  } else if (data == "mor") {
+    let cartoons_tv = await notion.databases.query({
+      database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
+    });
+    let b = Object.values(cartoons_tv.results)
+      .map((p) => ({
+        check: getPropVal(p, "Watched"),
+        title: getPropVal(p, "Name"),
+        tags: getPropVal(p, "Tags"),
+      }))
+      .filter((p) => p.check == false && p.tags.includes("Morning"));
+    msg.reply(b[getRandomInt(b.length)].title);
+  } else if (data == "tv") {
+    let tv = await notion.databases.query({
+      database_id: process.env.DATABASE_TV_SHOWS,
+    });
+    let a = Object.values(tv.results)
+      .map((p) => ({
+        check: getPropVal(p, "Watched"),
+        title: getPropVal(p, "Name"),
+      }))
+      .filter((p) => p.check == false);
+    msg.reply(a[getRandomInt(a.length)].title);
+  }
+});
 bot.on("text", async (ctx) => {
   let textik = ctx.message.text.split(" ");
   let url = "";
@@ -216,12 +308,12 @@ bot.on("text", async (ctx) => {
       }
     } else {
       task += el + " ";
-      if (el.includes("купити")) {
+      if (el.toLowerCase().includes("купити")) {
         if_buy = 1;
       }
     }
   }
-  // console.log(datab, " ", task, " ", if_buy, " ", url);
+  console.log(datab, " ", task, " ", if_buy, " ", url);
   if (url == "") {
     if (if_buy == 1) {
       await addTask(task, "List of purchase", datab);

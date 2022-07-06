@@ -71,7 +71,8 @@ function getByTypesFromPage(page, types = ["url", "date"]) {
     )
     .forEach((p) => (resp += `  ${p.prop} - ${p.propVal}\n`));
 
-  return resp;
+  const mim = `\__`;
+  return resp.replace("_", mim);
 }
 
 function isCategoryValue(page, categoryName, value) {
@@ -179,6 +180,7 @@ all - Get all Database
 transport - All task from database where Place = Transport 
 buy - List of purchase that i need to buy
 fun - random movie to watch
+todo - get all todos in base
 `;
 // bot.setMyCommands([
 //   { command: "/start", description: "Restart bot" },

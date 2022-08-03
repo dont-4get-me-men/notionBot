@@ -181,6 +181,7 @@ transport - All task from database where Place = Transport
 buy - List of purchase that i need to buy
 fun - random movie to watch
 todo - get all todos in base
+video - get random video 
 `;
 // bot.setMyCommands([
 //   { command: "/start", description: "Restart bot" },
@@ -295,6 +296,21 @@ bot.on("callback_query", async (msg) => {
       .filter((p) => p.check == false);
     msg.reply(a[getRandomInt(a.length)].title);
   }
+});
+bot.command("video", async (ctx) => {
+  let videos = await notion.databases.query({
+    database_id: process.env.DATABASE_VIDEO,
+  });
+  let b = Object.values(videos.results)
+    .map((p) => ({
+      check: getPropVal(p, "Watched"),
+      title: getPropVal(p, "Name"),
+      url: getPropVal(p, "URL"),
+    }))
+    .filter((p) => p.check == false);
+  let rand = b[getRandomInt(b.length)];
+  let stri = ` **${rand.title}**\n ${rand.url}`;
+  ctx.replyWithMarkdown(stri);
 });
 bot.on("text", async (ctx) => {
   let textik = ctx.message.text.split(" ");

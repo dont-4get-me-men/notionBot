@@ -71,8 +71,8 @@ function getByTypesFromPage(page, types = ["url", "date"]) {
     )
     .forEach((p) => (resp += `  ${p.prop} - ${p.propVal}\n`));
 
-  const mim = `\__`;
-  return resp.replace("_", mim);
+  const mim = `\\_`;
+  return resp.replaceAll("_", mim);
 }
 
 function isCategoryValue(page, categoryName, value) {
@@ -95,8 +95,8 @@ function getAllWithFirstlyTypeFromPage(page, type = "select") {
     .forEach((p) => (resp += ` ** ${p.prop} - ${p.propVal}\n**`));
 
   resp += getByTypeFromPage(page, "url");
-  const mim = `\__`;
-  return resp.replace("_", mim);
+  const mim = `\\_`;
+  return resp.replaceAll("_", mim);
 }
 
 function getAllFromDatabase(base, type = "select") {
@@ -175,13 +175,13 @@ let databaseJson = await notion.databases.query({ database_id: database_gtd });
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const commands = `
-start - Restart bot
-all - Get all Database
-transport - All task from database where Place = Transport 
-buy - List of purchase that i need to buy
-fun - random movie to watch
-todo - get all todos in base
-video - get random video 
+  start - Restart bot
+  all - Get all Database
+  transport - All task from database where Place = Transport 
+  buy - List of purchase that i need to buy
+  fun - random movie to watch
+  todo - get all todos in base
+  video - get random video 
 `;
 // bot.setMyCommands([
 //   { command: "/start", description: "Restart bot" },

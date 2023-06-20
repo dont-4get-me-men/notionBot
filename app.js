@@ -7,12 +7,10 @@ dotenv.config();
 
 const notion = new Client({ auth: process.env.SECRET_NOTION });
 //const database_test = process.env.TEST_DATABASE;
-const database_video = process.env.DATABASE_VIDEO;
+//const database_video = process.env.DATABASE_VIDEO;
 const database_gtd = process.env.DATABASE_GTD;
 
-function getRandomInt(max) {
-  return Math.floor(Math.random() * max);
-}
+
 
 const propertyGetters = {
   url: (obj) => obj?.url,
@@ -56,7 +54,7 @@ function getByTypeFromPage(page, type = "title") {
 }
 
 //get value of types from page
-function getByTypesFromPage(page, types = ["url", "date"]) {
+function getByTypesFromPage(page, types = ["url", "date","number"]) {
   let resp = getByTypeFromPage(page, "title");
 
   Object.keys(page.properties)
@@ -113,7 +111,7 @@ function getDataByCategoryValue(
   base,
   category_name,
   value,
-  types = ["url", "date"]
+  types = ["url", "date","number"]
 ) {
   let resp = "";
   let i = 1;
@@ -177,19 +175,10 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const commands = `
   start - Restart bot
   all - Get all Database
-  transport - All task from database where Place = Transport 
   buy - List of purchase that i need to buy
-  fun - random movie to watch
   todo - get all todos in base
-  video - get random video 
 `;
-// bot.setMyCommands([
-//   { command: "/start", description: "Restart bot" },
-//   { command: "/all", description: "Get all Database" },
-//   { command: "/buy", description: "List of purchase that i need to buy" },
-//   { command: "/todo", description: "What I need to do" },
-//   { command: "/fun", description: "What I need to do" },
-// ]);
+
 
 bot.start((ctx) => ctx.reply("Hello Yura"));
 bot.help((ctx) => ctx.reply(constants._commands));
@@ -202,7 +191,7 @@ bot.command("all", async (ctx) => {
 bot.command("todo", async (ctx) => {
   databaseJson = await notion.databases.query({ database_id: database_gtd });
   ctx.replyWithMarkdown(
-    getDataByCategoryValue(databaseJson, "Bucket", "To do")
+    getDataByCategoryValue(databaseJson, "Bucket", "TO DO")
   );
 });
 
@@ -211,107 +200,107 @@ bot.command("buy", async (ctx) => {
   let reply = getDataByCategoryValue(
     databaseJson,
     "Bucket",
-    "List of purchase"
+    "BUY"
   );
   ctx.replyWithMarkdown(reply);
 });
 
-bot.command("transport", async (ctx) => {
-  databaseJson = await notion.databases.query({ database_id: database_gtd });
-  ctx.replyWithMarkdown(
-    getDataByCategoryValue(databaseJson, "Place", "Transport")
-  );
-});
+// bot.command("transport", async (ctx) => {
+//   databaseJson = await notion.databases.query({ database_id: database_gtd });
+//   ctx.replyWithMarkdown(
+//     getDataByCategoryValue(databaseJson, "Place", "Transport")
+//   );
+// });
 
-bot.command("fun", async (ctx) => {
-  ctx.reply(
-    "Choose what are you going to watch",
-    Markup.inlineKeyboard([
-      [Markup.button.callback("Movies", "mov")],
-      [Markup.button.callback("Cartoons TV show", "car")],
-      [Markup.button.callback("Morning", "mor")],
-      [Markup.button.callback("TV-shows", "tv")],
-    ])
-  );
-});
-bot.on("callback_query", async (msg) => {
-  let data = msg.update.callback_query.data;
-  if (data == "mov") {
-    let films = await notion.databases.query({
-      database_id: process.env.DATABASE_FILMS,
-    });
-    let cartoons = await notion.databases.query({
-      database_id: process.env.DATABASE_CARTOONS,
-    });
-    let a = Object.values(films.results.concat(cartoons.results))
-      .map((p) => ({
-        check: getPropVal(p, "Watched"),
-        title: getPropVal(p, "Name"),
-      }))
-      .filter((p) => p.check == false);
-    msg.reply(a[getRandomInt(a.length)].title);
-  } else if (data == "car") {
-    let anime = await notion.databases.query({
-      database_id: process.env.DATABASE_ANIME,
-    });
-    let cartoons_tv = await notion.databases.query({
-      database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
-    });
-    let a = Object.values(anime.results)
-      .map((p) => ({
-        check: getPropVal(p, "Watched"),
-        title: getPropVal(p, "Name"),
-      }))
-      .filter((p) => p.check == false);
-    let b = Object.values(cartoons_tv.results)
-      .map((p) => ({
-        check: getPropVal(p, "Watched"),
-        title: getPropVal(p, "Name"),
-        tags: getPropVal(p, "Tags"),
-      }))
-      .filter((p) => p.check == false && !p.tags.includes("Morning"));
-    let c = a.concat(b);
-    msg.reply(c[getRandomInt(c.length)].title);
-  } else if (data == "mor") {
-    let cartoons_tv = await notion.databases.query({
-      database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
-    });
-    let b = Object.values(cartoons_tv.results)
-      .map((p) => ({
-        check: getPropVal(p, "Watched"),
-        title: getPropVal(p, "Name"),
-        tags: getPropVal(p, "Tags"),
-      }))
-      .filter((p) => p.check == false && p.tags.includes("Morning"));
-    msg.reply(b[getRandomInt(b.length)].title);
-  } else if (data == "tv") {
-    let tv = await notion.databases.query({
-      database_id: process.env.DATABASE_TV_SHOWS,
-    });
-    let a = Object.values(tv.results)
-      .map((p) => ({
-        check: getPropVal(p, "Watched"),
-        title: getPropVal(p, "Name"),
-      }))
-      .filter((p) => p.check == false);
-    msg.reply(a[getRandomInt(a.length)].title);
-  }
-});
-bot.command("video", async (ctx) => {
-  let videos = await notion.databases.query({
-    database_id: process.env.DATABASE_VIDEO,
-  });
-  let b = Object.values(videos.results)
-    .map((p) => ({
-      check: getPropVal(p, "Watched"),
-      title: getPropVal(p, "Name"),
-      url: getPropVal(p, "URL"),
-    }))
-    .filter((p) => p.check == false);
-  let rand = b[getRandomInt(b.length)];
-  let stri = ` **${rand.title}**\n ${rand.url}`;
-  ctx.replyWithMarkdown(stri);
-});
+// bot.command("fun", async (ctx) => {
+//   ctx.reply(
+//     "Choose what are you going to watch",
+//     Markup.inlineKeyboarnd([
+//       [Markup.button.callback("Movies", "mov")],
+//       [Markup.button.callback("Cartoons TV show", "car")],
+//       [Markup.button.callback("Morning", "mor")],
+//       [Markup.button.callback("TV-shows", "tv")],
+//     ])
+//   );
+// });
+// bot.on("callback_query", async (msg) => {
+//   let data = msg.update.callback_query.data;
+//   if (data == "mov") {
+//     let films = await notion.databases.query({
+//       database_id: process.env.DATABASE_FILMS,
+//     });
+//     let cartoons = await notion.databases.query({
+//       database_id: process.env.DATABASE_CARTOONS,
+//     });
+//     let a = Object.values(films.results.concat(cartoons.results))
+//       .map((p) => ({
+//         check: getPropVal(p, "Watched"),
+//         title: getPropVal(p, "Name"),
+//       }))
+//       .filter((p) => p.check == false);
+//     msg.reply(a[getRandomInt(a.length)].title);
+//   } else if (data == "car") {
+//     let anime = await notion.databases.query({
+//       database_id: process.env.DATABASE_ANIME,
+//     });
+//     let cartoons_tv = await notion.databases.query({
+//       database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
+//     });
+//     let a = Object.values(anime.results)
+//       .map((p) => ({
+//         check: getPropVal(p, "Watched"),
+//         title: getPropVal(p, "Name"),
+//       }))
+//       .filter((p) => p.check == false);
+//     let b = Object.values(cartoons_tv.results)
+//       .map((p) => ({
+//         check: getPropVal(p, "Watched"),
+//         title: getPropVal(p, "Name"),
+//         tags: getPropVal(p, "Tags"),
+//       }))
+//       .filter((p) => p.check == false && !p.tags.includes("Morning"));
+//     let c = a.concat(b);
+//     msg.reply(c[getRandomInt(c.length)].title);
+//   } else if (data == "mor") {
+//     let cartoons_tv = await notion.databases.query({
+//       database_id: process.env.DATABASE_CARTOONS_TV_SHOWS,
+//     });
+//     let b = Object.values(cartoons_tv.results)
+//       .map((p) => ({
+//         check: getPropVal(p, "Watched"),
+//         title: getPropVal(p, "Name"),
+//         tags: getPropVal(p, "Tags"),
+//       }))
+//       .filter((p) => p.check == false && p.tags.includes("Morning"));
+//     msg.reply(b[getRandomInt(b.length)].title);
+//   } else if (data == "tv") {
+//     let tv = await notion.databases.query({
+//       database_id: process.env.DATABASE_TV_SHOWS,
+//     });
+//     let a = Object.values(tv.results)
+//       .map((p) => ({
+//         check: getPropVal(p, "Watched"),
+//         title: getPropVal(p, "Name"),
+//       }))
+//       .filter((p) => p.check == false);
+//     msg.reply(a[getRandomInt(a.length)].title);
+//   }
+// });
+// bot.command("video", async (ctx) => {
+//   let videos = await notion.databases.query({
+//     database_id: process.env.DATABASE_VIDEO,
+//   });
+//   let b = Object.values(videos.results)
+//     .map((p) => ({
+//       check: getPropVal(p, "Watched"),
+//       title: getPropVal(p, "Name"),
+//       url: getPropVal(p, "URL"),
+//     }))
+//     .filter((p) => p.check == false);
+//   let rand = b[getRandomInt(b.length)];
+//   let stri = ` **${rand.title}**\n ${rand.url}`;
+//   ctx.replyWithMarkdown(stri);
+// });
 bot.on("text", async (ctx) => {
   let textik = ctx.message.text.split(" ");
   let url = "";
@@ -321,9 +310,6 @@ bot.on("text", async (ctx) => {
   for (let el of textik) {
     if (el.startsWith("http")) {
       url = el;
-      if (el.includes("youtube.com")) {
-        datab = database_video;
-      }
     } else {
       task += el + " ";
       if (el.toLowerCase().includes("купити")) {
@@ -334,15 +320,15 @@ bot.on("text", async (ctx) => {
   console.log(datab, " ", task, " ", if_buy, " ", url);
   if (url == "") {
     if (if_buy == 1) {
-      await addTask(task, "List of purchase", datab);
+      await addTask(task, "BUY", datab);
     } else {
-      await addTask(task, "Inbox", datab);
+      await addTask(task, "INBOX", datab);
     }
   } else {
     if (if_buy == 1) {
-      await addTaskUrl(task, url, "List of purchase", datab);
+      await addTaskUrl(task, url, "BUY", datab);
     } else {
-      await addTaskUrl(task, url, "Inbox", datab);
+      await addTaskUrl(task, url, "INBOX", datab);
     }
   }
   // } catch (error) {
